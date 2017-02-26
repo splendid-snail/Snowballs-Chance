@@ -24,10 +24,19 @@ import os
 # Define some colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+GREY1 = (230, 230, 230)
+GREY2 = (220, 220, 220)
+GREY3 = (210, 210, 210)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
+ORANGE1 = (255, 210, 0)
+ORANGE2 = (255, 180, 0)
+ORANGE3 = (255, 130, 0)
+
+PLASMA_COLORS = (YELLOW, ORANGE1, ORANGE2, ORANGE3)
+SNOWBALL_COLORS = (WHITE, GREY1, GREY2, GREY3)
 
 #define the classes
 class Game(object):
@@ -55,12 +64,7 @@ class Game(object):
         self.player.rect.centery = 450
         self.player.beam = False
         self.all_sprites_list.add(self.player)
-        #create blocks etc
-        create_obstacle(500, 100, True, self.obstacle_list, self.all_sprites_list)
-        create_obstacle(100, 150, False, self.obstacle_list, self.all_sprites_list)
-        create_obstacle(200, 200, True, self.obstacle_list, self.all_sprites_list)
-        create_obstacle(300, 250, False, self.obstacle_list, self.all_sprites_list)
-        create_obstacle(400, 300, True, self.obstacle_list, self.all_sprites_list)
+
 
     def process_events(self):
         """Event handling. Return True to close window/quit."""
@@ -154,7 +158,7 @@ class Game(object):
             antiscore_text = str(self.antiscore)
             antiscore_display = font.render(antiscore_text, True, RED)
             screen.blit(antiscore_display, [650, 0])
-
+        #Update display
         pygame.display.flip()
 
 
@@ -172,7 +176,7 @@ class Snowball(pygame.sprite.Sprite):
         self.yvelocity = 2
         self.xvelocity = 1
         #draw the circle
-        pygame.draw.circle(self.image, WHITE, (10, 10), 10, 0)
+        pygame.draw.circle(self.image, SNOWBALL_COLORS[random.randrange(len(SNOWBALL_COLORS))], (10, 10), 10, 0)
 
     def update(self):
         global game
@@ -197,7 +201,7 @@ class Plasma(pygame.sprite.Sprite):
         self.image.set_colorkey(BLACK)
         self.rect = self.image.get_rect()
         self.ticker = 15
-        pygame.draw.circle(self.image, YELLOW, (5, 5), 5, 0)
+        pygame.draw.circle(self.image, PLASMA_COLORS[random.randrange(len(PLASMA_COLORS))], (5, 5), 5, 0)
 
     def update(self):
         self.ticker -= 1
@@ -265,14 +269,15 @@ def create_plasma():
         game.plasma_list.add(plasma)
         game.all_sprites_list.add(plasma)
 
-def create_obstacle(x, y, right, list1, list2):
-    """spawns an obstacle. (xpos, ypos, True/False)"""
+def create_obstacle(x, y, right):
+    """spawns an obstacle. (xpos, ypos, True/False)
+    The list stuff is a cludge because we can't call game.methods() on init"""
     obstacle = Obstacle()
     obstacle.rect.centerx = x
     obstacle.rect.centery = y
     obstacle.right = right
-    list1.add(obstacle)
-    list2.add(obstacle)
+    game.obstacle_list.add(obstacle)
+    game.all_sprites_list.add(obstacle)
 
 #main loop----------------------------------------------------------------------
 def main():
@@ -291,6 +296,12 @@ def main():
     clock = pygame.time.Clock()
     #create an instance of the Game class (remember, it's global)
     game = Game()
+    #stuff we couldnt easily do in game.__init__()
+    create_obstacle(500, 100, True)
+    create_obstacle(100, 150, False)
+    create_obstacle(200, 200, True)
+    create_obstacle(300, 250, False)
+    create_obstacle(400, 300, True)
 
     #Main game loop
     while not done:
