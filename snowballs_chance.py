@@ -6,14 +6,15 @@
         is also created by Game(). Beyond using a global list (not doing that)
         the current way stands.
 
-    Next up: Countdown timer and game over / score screen. That's the game
-    structure done - from there it's just about balancing.
+    Our "countdown from 120 seconds" timer is running in the background - see
+    the console. All we need to do now is display it in the main game area and
+    rig it up to actually do something when it reaches the bottom. A game over
+    screen, in other words.
 
     Snowballs could use a little random x movement back.
 
     Maybe play withthe general y position of the obstacles. y += 20?
 
-    Randomise plasma ball colour a bit
 """
 
 #imports and inits
@@ -52,7 +53,7 @@ class Game(object):
         self.font = pygame.font.SysFont("Arial", 20, False, False)
         self.game_state = "menu"
         self.done = False
-        self.start_ticks = pygame.time.get_ticks()
+        self.countdown_ticks = 0
         #create the sprite lists
         self.snowball_list = pygame.sprite.Group()
         self.obstacle_list = pygame.sprite.Group()
@@ -64,6 +65,9 @@ class Game(object):
         self.player.rect.centery = 450
         self.player.beam = False
         self.all_sprites_list.add(self.player)
+        self.seconds = 0
+        self.countdown_from_120 = 120
+        self.minus = 0
 
 
     def process_events(self):
@@ -91,7 +95,9 @@ class Game(object):
     def game_logic(self):
         global mouse_pos #Global because things like plasma update function will refer to it
         """Main game logic - updates positions and checks for collides"""
-        if self.game_state == "playing":
+        if self.game_state == "menu":
+            self.countdown_ticks = pygame.time.get_ticks()
+        elif self.game_state == "playing":
             mouse_pos = pygame.mouse.get_pos()
             #handle spawning
             self.spawn_ticker += 1
@@ -121,6 +127,11 @@ class Game(object):
                 self.score += 1
             for x in self.snowballs_melted_list:
                 self.antiscore += 1
+            #countdown stuff
+            self.seconds = (pygame.time.get_ticks() - self.countdown_ticks) / 1000
+            self.minus = 0 - self.seconds
+            self.countdown_from_120 = 120 + self.minus
+
 
     def display_frame(self, screen):
         """Do all the display stuff"""
@@ -158,6 +169,10 @@ class Game(object):
             antiscore_text = str(self.antiscore)
             antiscore_display = font.render(antiscore_text, True, RED)
             screen.blit(antiscore_display, [650, 0])
+
+            timer_text = str(self.countdown_from_120)
+            timer_display = font.render(timer_text, True, WHITE)
+            screen.blit(timer_display, [300, 0])
         #Update display
         pygame.display.flip()
 
@@ -303,6 +318,7 @@ def main():
     create_obstacle(300, 250, False)
     create_obstacle(400, 300, True)
 
+
     #Main game loop
     while not done:
         #Process events (remember - the funtion returns True at quit time)
@@ -315,7 +331,9 @@ def main():
         os.system('cls')
         print("spawn:", game.spawn_ticker)
         print(clock)
-        print("ticks:", game.start_ticks)
+        print("ticks caught:", game.countdown_ticks)
+        print("secs:", game.seconds)
+        print("countdown:", game.countdown_from_120)
         print(game.player.beam)
         #pause for next frame
         clock.tick(60)
