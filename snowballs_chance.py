@@ -1,10 +1,11 @@
 """ We need to round down the counter.
 
-    Snowballs could use a little random x
-    movement back. Maybe play withthe general y position of the obstacles.
+    I reckon we should change the main snowball animation entirely! The random
+    stuff is bunkum. Let's try importing the decball movement and see how it
+    feels! Save a new version first maybe.
 
     The game over screen needs to be completely redone. It should display the
-    score: score minus antiscore.
+    score: score minus antiscore. And some decballs!
 """
 
 #imports and inits
@@ -39,6 +40,7 @@ class Game(object):
         self.score = 0
         self.antiscore = 0
         self.spawn_ticker = 0
+        self.dec_ticker = 0
         self.SPAWN_TICKER_LIMIT = 500
         self.font = pygame.font.SysFont("Arial", 20, False, False)
         self.game_state = "menu"
@@ -48,6 +50,7 @@ class Game(object):
         self.snowball_list = pygame.sprite.Group()
         self.obstacle_list = pygame.sprite.Group()
         self.plasma_list = pygame.sprite.Group()
+        self.decball_list = pygame.sprite.Group()
         self.all_sprites_list = pygame.sprite.Group()
         #create player
         self.player = Player()
@@ -68,19 +71,22 @@ class Game(object):
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     return True
                 elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    for x in self.decball_list:
+                        self.decball_list.remove(x)
+                        self.all_sprites_list.remove(x)
                     self.game_state = "playing"
                     return False
         elif self.game_state == "playing":
-                # --- Main event handling loop
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                        return True
-                    elif event.type == pygame.MOUSEBUTTONDOWN:
-                        self.player.beam = True
-                        return False
-                    elif event.type == pygame.MOUSEBUTTONUP:
-                        self.player.beam = False
-                        return False
+            # --- Main event handling loop
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    return True
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    self.player.beam = True
+                    return False
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    self.player.beam = False
+                    return False
         elif self.game_state == "over":
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
@@ -91,6 +97,20 @@ class Game(object):
         """Main game logic - updates positions and checks for collides"""
         if self.game_state == "menu":
             self.countdown_ticks = pygame.time.get_ticks()
+            #decball spawning
+            self.dec_ticker += 1
+            if self.dec_ticker > 59:
+                self.dec_ticker = 0
+
+            if (self.dec_ticker % 3) == 0:
+                create_decball()
+            #update sprites
+            self.all_sprites_list.update()
+            #remove shitty decballs
+            for x in self.decball_list:
+                if x.rect.top > 500:
+                    self.decball_list.remove(x)
+                    self.all_sprites_list.remove(x)
         elif self.game_state == "playing":
             #handle spawning
             self.spawn_ticker += 1
@@ -134,6 +154,11 @@ class Game(object):
     def display_frame(self, screen):
         """Do all the display stuff"""
         if self.game_state == "menu":
+            #clear the screen
+            screen.fill(BLACK)
+            #draw the decballs
+            self.decball_list.draw(screen)
+
             font = pygame.font.SysFont("Arial", 40, False, False)
             title_headline_text1 = "Snowball's"
             title_headline_display1 = font.render(title_headline_text1, False, WHITE)
@@ -221,6 +246,38 @@ class Snowball(pygame.sprite.Sprite):
                 self.rect.centerx -= self.xvelocity - random.randrange(-3,4)
 
 
+class Decball(pygame.sprite.Sprite):
+    def __init__(self):
+        """ initialises a Snowball object """
+        #initialise parent class constructor
+        super().__init__()
+        #create the surface and give it a black background
+        self.image = pygame.Surface([20, 20])
+        self.image.fill(BLACK)
+        self.image.set_colorkey(BLACK)
+        #other attributes
+        self.rect = self.image.get_rect()
+        self.yvelocity = 2
+        self.xvelocity = 1
+        self.right = random.randrange(2)
+        #draw the circle
+        pygame.draw.circle(self.image, SNOWBALL_COLORS[random.randrange(len(SNOWBALL_COLORS))], (10, 10), 10, 0)
+
+    def update(self):
+        #downwards
+        self.rect.centery += 1
+        if self.right:
+            if not random.randrange(2):
+                self.rect.centerx += 1
+            if not random.randrange(32):
+                self.right = False
+        else:
+            if not random.randrange(2):
+                self.rect.centerx -= 1
+            if not random.randrange(64):
+                self.right = True
+
+
 class Plasma(pygame.sprite.Sprite):
     def __init__(self):
         """initialises a beam plasma ball"""
@@ -283,9 +340,21 @@ def create_snowballs():
         #set its x-y coords
         snowball.rect.x = random.randrange(700)
         snowball.rect.y = 0
+        snowball.right = True
         #add it to the lists
         game.snowball_list.add(snowball)
         game.all_sprites_list.add(snowball)
+
+
+def create_decball():
+    """ creates a single decball"""
+    global game
+    decball = Decball()
+    decball.rect.x = random.randrange(700)
+    decball.rect.bottom = 0
+    #lists
+    game.decball_list.add(decball)
+    game.all_sprites_list.add(decball)
 
 
 def create_plasma():
@@ -308,7 +377,6 @@ def create_obstacle(x, y, right):
     obstacle.right = right
     game.obstacle_list.add(obstacle)
     game.all_sprites_list.add(obstacle)
-
 
 #main loop----------------------------------------------------------------------
 def main():
@@ -353,6 +421,7 @@ def main():
         print("secs:", game.seconds)
         print("countdown:", game.countdown_from_120)
         print(game.player.beam)
+        print(game.decball_list)
         #pause for next frame
         clock.tick(60)
     pygame.quit()
