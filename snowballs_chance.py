@@ -1,20 +1,10 @@
-""" We could get rid of the complex 'list1' and 'list2' args for
-    the snowball/obstacle creator functions by using 'global game' and passing
-    them to game.list... i just can't be bothered right now.
-        ^---Actually we can't for create_obstacle() because it's called within
-        the Game() init function. So it obviously can't find the list, which
-        is also created by Game(). Beyond using a global list (not doing that)
-        the current way stands.
+""" We need to round down the counter.
 
-    Our "countdown from 120 seconds" timer is running in the background - see
-    the console. All we need to do now is display it in the main game area and
-    rig it up to actually do something when it reaches the bottom. A game over
-    screen, in other words.
+    Snowballs could use a little random x
+    movement back. Maybe play withthe general y position of the obstacles.
 
-    Snowballs could use a little random x movement back.
-
-    Maybe play withthe general y position of the obstacles. y += 20?
-
+    The game over screen needs to be completely redone. It should display the
+    score: score minus antiscore.
 """
 
 #imports and inits
@@ -91,14 +81,17 @@ class Game(object):
                     elif event.type == pygame.MOUSEBUTTONUP:
                         self.player.beam = False
                         return False
+        elif self.game_state == "over":
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                    return True
+
 
     def game_logic(self):
-        global mouse_pos #Global because things like plasma update function will refer to it
         """Main game logic - updates positions and checks for collides"""
         if self.game_state == "menu":
             self.countdown_ticks = pygame.time.get_ticks()
         elif self.game_state == "playing":
-            mouse_pos = pygame.mouse.get_pos()
             #handle spawning
             self.spawn_ticker += 1
             if self.spawn_ticker == self.SPAWN_TICKER_LIMIT/4:
@@ -131,6 +124,11 @@ class Game(object):
             self.seconds = (pygame.time.get_ticks() - self.countdown_ticks) / 1000
             self.minus = 0 - self.seconds
             self.countdown_from_120 = 120 + self.minus
+            #game over if countdown over
+            if self.countdown_from_120 < 0:
+                self.game_state = "over"
+        elif self.game_state == "over":
+            print("over")
 
 
     def display_frame(self, screen):
@@ -170,9 +168,25 @@ class Game(object):
             antiscore_display = font.render(antiscore_text, True, RED)
             screen.blit(antiscore_display, [650, 0])
 
-            timer_text = str(self.countdown_from_120)
+            timer_text = (str(self.countdown_from_120))
             timer_display = font.render(timer_text, True, WHITE)
             screen.blit(timer_display, [300, 0])
+        elif self.game_state == "over":
+            screen.fill(BLACK)
+
+            font = pygame.font.SysFont("Arial", 40, False, False)
+            title_headline_text1 = "Game"
+            title_headline_display1 = font.render(title_headline_text1, False, WHITE)
+            screen.blit(title_headline_display1, [184, 150])
+
+            title_headline_text2 = "Over"
+            title_headline_display2 = font.render(title_headline_text2, False, RED)
+            screen.blit(title_headline_display2, [375, 150])
+
+            font = pygame.font.SysFont("Arial", 20, False, False)
+            title_sub_text = "Press escape to quit"
+            title_sub_display = font.render(title_sub_text, False, WHITE)
+            screen.blit(title_sub_display, [263, 200])
         #Update display
         pygame.display.flip()
 
@@ -245,7 +259,6 @@ class Obstacle(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    global mouse_pos
     def __init__(self):
         """initialises the player object"""
         super().__init__()
@@ -274,6 +287,7 @@ def create_snowballs():
         game.snowball_list.add(snowball)
         game.all_sprites_list.add(snowball)
 
+
 def create_plasma():
     """spawns a brace of searing plasma near the player"""
     global game
@@ -283,6 +297,7 @@ def create_plasma():
         plasma.rect.y = game.player.rect.y - (20 + random.randrange(10))
         game.plasma_list.add(plasma)
         game.all_sprites_list.add(plasma)
+
 
 def create_obstacle(x, y, right):
     """spawns an obstacle. (xpos, ypos, True/False)
@@ -294,11 +309,12 @@ def create_obstacle(x, y, right):
     game.obstacle_list.add(obstacle)
     game.all_sprites_list.add(obstacle)
 
+
 #main loop----------------------------------------------------------------------
 def main():
     #make game global cause we are going to be referring to it from inside
     #other functions... a lot
-    global game
+    global game, mouse_pos
     #Init stuff not handled by game class
     pygame.init()
     #screen init
@@ -317,6 +333,7 @@ def main():
     create_obstacle(200, 200, True)
     create_obstacle(300, 250, False)
     create_obstacle(400, 300, True)
+    mouse_pos = pygame.mouse.get_pos()
 
 
     #Main game loop
@@ -324,6 +341,7 @@ def main():
         #Process events (remember - the funtion returns True at quit time)
         done = game.process_events()
         #Run game logic
+        mouse_pos = pygame.mouse.get_pos()
         game.game_logic()
         #Update display
         game.display_frame(screen)
@@ -338,6 +356,7 @@ def main():
         #pause for next frame
         clock.tick(60)
     pygame.quit()
+
 
 # Call the main function, start up the game
 if __name__ == "__main__":
