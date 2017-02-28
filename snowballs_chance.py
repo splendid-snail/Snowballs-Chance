@@ -39,11 +39,14 @@ class Game(object):
         """Create all attributes and initialise the game"""
         self.score = 0
         self.antiscore = 0
+        self.your_final_score = 0
+        self.old_high_score = 0
         self.spawn_ticker = 0
         self.dec_ticker = 0
         self.SPAWN_TICKER_LIMIT = 500
         self.font = pygame.font.SysFont("Arial", 20, False, False)
         self.game_state = "menu"
+        self.scored = False
         self.done = False
         self.countdown_ticks = 0
         #create the sprite lists
@@ -59,7 +62,7 @@ class Game(object):
         self.player.beam = False
         self.all_sprites_list.add(self.player)
         self.seconds = 0
-        self.countdown_from_120 = 120
+        self.countdown_from_120 = 0 #only needs to be here so console printing works before playing game_state, variable is reset later
         self.minus = 0
 
 
@@ -143,12 +146,14 @@ class Game(object):
             #countdown stuff
             self.seconds = (pygame.time.get_ticks() - self.countdown_ticks) / 1000
             self.minus = 0 - self.seconds
-            self.countdown_from_120 = 120 + self.minus
+            self.countdown_from_120 = 10 + self.minus #tweak this one for game length
             #game over if countdown over
             if self.countdown_from_120 < 0:
                 self.game_state = "over"
         elif self.game_state == "over":
-            print("over")
+            #scoring shit
+            game.your_final_score = game.score - game.antiscore
+            high_scores()
 
 
     def display_frame(self, screen):
@@ -331,6 +336,25 @@ class Player(pygame.sprite.Sprite):
         self.rect.centerx = mouse_pos[0]
 
 #define functions
+def high_scores():
+    """ this is only half done - it should set
+    game.score variables and do more io stuff"""
+    global game
+    if not game.scored:
+        game.hi_scores = open("high_scores.txt", "r")
+        game.old_high_score = game.hi_scores.read()
+        game.hi_scores.close()
+        if int(game.old_high_score) < game.your_final_score:
+            game.hi_scores = open("high_scores.txt", "w")
+            game.hi_scores.write(str(game.score - game.antiscore))
+            game.hi_scores.close()
+        game.scored = True
+    print("Old high score:", game.old_high_score)
+    print("Your final score:", game.your_final_score)
+    if game.your_final_score > int(game.old_high_score):
+        print("Ooh congratulations! It's a new high score!")
+
+
 def create_snowballs():
     """ spawns a volley of snowballs at the top of the screen"""
     global game
