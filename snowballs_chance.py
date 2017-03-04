@@ -1,16 +1,13 @@
-""" We need to round down the counter.
-
-    I reckon we should change the main snowball animation entirely! The random
-    stuff is bunkum. Let's try importing the decball movement and see how it
-    feels! Save a new version first maybe.
-
-    The game over screen needs to be completely redone. It should display the
-    score: score minus antiscore. And some decballs!
+"""
+Just balancing and shit now. Could we attempt continuous, decball-style motion
+for the snowballs? Worth a try. Plus the exit screen should say "Press escape to
+quit"
 """
 
 #imports and inits
 import pygame
 import random
+import math
 import os
 
 # Define some colors
@@ -47,7 +44,6 @@ class Game(object):
         self.font = pygame.font.SysFont("Arial", 20, False, False)
         self.game_state = "menu"
         self.scored = False
-        self.done = False
         self.countdown_ticks = 0
         #create the sprite lists
         self.snowball_list = pygame.sprite.Group()
@@ -61,9 +57,6 @@ class Game(object):
         self.player.rect.centery = 450
         self.player.beam = False
         self.all_sprites_list.add(self.player)
-        self.seconds = 0
-        self.countdown_from_120 = 0 #only needs to be here so console printing works before playing game_state, variable is reset later
-        self.minus = 0
 
 
     def process_events(self):
@@ -117,7 +110,7 @@ class Game(object):
         elif self.game_state == "playing":
             #handle spawning
             self.spawn_ticker += 1
-            if self.spawn_ticker == self.SPAWN_TICKER_LIMIT/4:
+            if self.spawn_ticker == 20 or self.spawn_ticker == 270:
                 create_snowballs()
             if self.spawn_ticker == self.SPAWN_TICKER_LIMIT:
                 self.spawn_ticker = 0
@@ -146,11 +139,25 @@ class Game(object):
             #countdown stuff
             self.seconds = (pygame.time.get_ticks() - self.countdown_ticks) / 1000
             self.minus = 0 - self.seconds
-            self.countdown_from_120 = 10 + self.minus #tweak this one for game length
+            self.countdown_from_120 = 60 + self.minus #tweak this one for game length
             #game over if countdown over
             if self.countdown_from_120 < 0:
                 self.game_state = "over"
         elif self.game_state == "over":
+            #decballs
+            self.dec_ticker += 1
+            if self.dec_ticker > 59:
+                self.dec_ticker = 0
+
+            if self.dec_ticker == 0 or self.dec_ticker == 29:
+                create_decball()
+            #update sprites
+            self.all_sprites_list.update()
+            #remove shitty decballs
+            for x in self.decball_list:
+                if x.rect.top > 500:
+                    self.decball_list.remove(x)
+                    self.all_sprites_list.remove(x)
             #scoring shit
             game.your_final_score = game.score - game.antiscore
             high_scores()
@@ -198,25 +205,56 @@ class Game(object):
             antiscore_display = font.render(antiscore_text, True, RED)
             screen.blit(antiscore_display, [650, 0])
 
-            timer_text = (str(self.countdown_from_120))
+            timer_text = (str(math.ceil(self.countdown_from_120)))
             timer_display = font.render(timer_text, True, WHITE)
             screen.blit(timer_display, [300, 0])
         elif self.game_state == "over":
             screen.fill(BLACK)
 
-            font = pygame.font.SysFont("Arial", 40, False, False)
+            #decballs
+            self.decball_list.draw(screen)
+            #text stuff
+            game_over_header_x = 175
+            game_over_header_y = 100
+
+            game_over_text_x = 200
+
+            font = pygame.font.SysFont("Arial", 60, False, False)
             title_headline_text1 = "Game"
             title_headline_display1 = font.render(title_headline_text1, False, WHITE)
-            screen.blit(title_headline_display1, [184, 150])
+            screen.blit(title_headline_display1, [game_over_header_x, game_over_header_y])
 
             title_headline_text2 = "Over"
             title_headline_display2 = font.render(title_headline_text2, False, RED)
-            screen.blit(title_headline_display2, [375, 150])
+            screen.blit(title_headline_display2, [game_over_header_x + 175, game_over_header_y])
 
             font = pygame.font.SysFont("Arial", 20, False, False)
-            title_sub_text = "Press escape to quit"
-            title_sub_display = font.render(title_sub_text, False, WHITE)
-            screen.blit(title_sub_display, [263, 200])
+
+
+
+            if self.score > 1:
+                title_sub_text1 = "You saved " + str(self.score) + " snowballs"
+            else:
+                title_sub_text1 = "You saved no snowballs... you monster."
+            title_sub_display1 = font.render(title_sub_text1, False, WHITE)
+            screen.blit(title_sub_display1, [game_over_text_x, 200])
+
+
+            title_sub_text2 = "Meanwhile, you lost " + str(self.antiscore) + "..."
+            title_sub_display2 = font.render(title_sub_text2, False, WHITE)
+            screen.blit(title_sub_display2, [game_over_text_x + 25, 250])
+
+            title_sub_text3 = "...so your score is " + str(self.your_final_score) + "."
+            title_sub_display3 = font.render(title_sub_text3, False, WHITE)
+            screen.blit(title_sub_display3, [game_over_text_x + 50, 300])
+
+            if self.your_final_score > int(self.old_high_score):
+                title_sub_text4 = "A new high score!"
+            else:
+                title_sub_text4 = "High score: " + str(self.old_high_score)
+            title_sub_display4 = font.render(title_sub_text4, False, RED)
+            screen.blit(title_sub_display4, [game_over_text_x + 50, 350])
+
         #Update display
         pygame.display.flip()
 
@@ -232,8 +270,9 @@ class Snowball(pygame.sprite.Sprite):
         self.image.set_colorkey(BLACK)
         #other attributes
         self.rect = self.image.get_rect()
-        self.yvelocity = 2
-        self.xvelocity = 1
+        self.yvelocity = 3
+        self.xvelocity = 2
+        self.right = random.randrange(2)
         #draw the circle
         pygame.draw.circle(self.image, SNOWBALL_COLORS[random.randrange(len(SNOWBALL_COLORS))], (10, 10), 10, 0)
 
@@ -242,7 +281,18 @@ class Snowball(pygame.sprite.Sprite):
         """ Called each frame """
         #downwards motion
         if game.player.beam == False:
-            self.rect.centery += self.yvelocity + random.randrange(-3,4)
+            self.rect.centery += 2
+            if self.right:
+                if not random.randrange(2):
+                    self.rect.centerx += self.xvelocity
+                if not random.randrange(32):
+                    self.right = False
+            else:
+                if not random.randrange(2):
+                    self.rect.centerx -= self.xvelocity
+                if not random.randrange(64):
+                    self.right = True
+        #if the player is beaming
         else:
             #x axis motion
             if self.rect.centerx < game.player.rect.centerx:
@@ -337,8 +387,6 @@ class Player(pygame.sprite.Sprite):
 
 #define functions
 def high_scores():
-    """ this is only half done - it should set
-    game.score variables and do more io stuff"""
     global game
     if not game.scored:
         game.hi_scores = open("high_scores.txt", "r")
@@ -349,10 +397,6 @@ def high_scores():
             game.hi_scores.write(str(game.score - game.antiscore))
             game.hi_scores.close()
         game.scored = True
-    print("Old high score:", game.old_high_score)
-    print("Your final score:", game.your_final_score)
-    if game.your_final_score > int(game.old_high_score):
-        print("Ooh congratulations! It's a new high score!")
 
 
 def create_snowballs():
@@ -420,7 +464,7 @@ def main():
     #create an instance of the Game class (remember, it's global)
     game = Game()
     #stuff we couldnt easily do in game.__init__()
-    create_obstacle(500, 100, True)
+    #create_obstacle(500, 100, True)
     create_obstacle(100, 150, False)
     create_obstacle(200, 200, True)
     create_obstacle(300, 250, False)
@@ -437,15 +481,8 @@ def main():
         game.game_logic()
         #Update display
         game.display_frame(screen)
-        #Debug console shit
-        os.system('cls')
-        print("spawn:", game.spawn_ticker)
-        print(clock)
-        print("ticks caught:", game.countdown_ticks)
-        print("secs:", game.seconds)
-        print("countdown:", game.countdown_from_120)
-        print(game.player.beam)
-        print(game.decball_list)
+        #Debug console shit can go below
+
         #pause for next frame
         clock.tick(60)
     pygame.quit()
