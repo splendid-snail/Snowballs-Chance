@@ -1,7 +1,9 @@
 """
-Just balancing and shit now. Could we attempt continuous, decball-style motion
-for the snowballs? Worth a try. Plus the exit screen should say "Press escape to
-quit"
+Can we finally use our screen_rect to centre some text??
+
+Just balancing and shit after that. I think there should be a bit more than a
+snowball's space between the obstacles - part of the game's challenge can be
+holding them there...?
 """
 
 #imports and inits
@@ -29,15 +31,14 @@ SNOWBALL_COLORS = (WHITE, GREY1, GREY2, GREY3)
 
 #define the classes
 class Game(object):
-    """ Represents an instance of the game. To reset the game
-        we can apparently just create a new instance of this class."""
+    """ Represents an instance of the game."""
 
     def __init__(self):
         """Create all attributes and initialise the game"""
         self.score = 0
         self.antiscore = 0
         self.your_final_score = 0
-        self.old_high_score = 0
+        self.old_high_score = -999
         self.spawn_ticker = 0
         self.dec_ticker = 0
         self.SPAWN_TICKER_LIMIT = 500
@@ -45,6 +46,8 @@ class Game(object):
         self.game_state = "menu"
         self.scored = False
         self.countdown_ticks = 0
+        self.obstacles_spawned = False
+        self.mouse_pos = pygame.mouse.get_pos()
         #create the sprite lists
         self.snowball_list = pygame.sprite.Group()
         self.obstacle_list = pygame.sprite.Group()
@@ -72,6 +75,7 @@ class Game(object):
                         self.all_sprites_list.remove(x)
                     self.game_state = "playing"
                     return False
+
         elif self.game_state == "playing":
             # --- Main event handling loop
             for event in pygame.event.get():
@@ -83,10 +87,13 @@ class Game(object):
                 elif event.type == pygame.MOUSEBUTTONUP:
                     self.player.beam = False
                     return False
+
         elif self.game_state == "over":
             for event in pygame.event.get():
                 if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                     return True
+                elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    self.__init__()
 
 
     def game_logic(self):
@@ -97,7 +104,6 @@ class Game(object):
             self.dec_ticker += 1
             if self.dec_ticker > 59:
                 self.dec_ticker = 0
-
             if (self.dec_ticker % 3) == 0:
                 create_decball()
             #update sprites
@@ -107,7 +113,12 @@ class Game(object):
                 if x.rect.top > 500:
                     self.decball_list.remove(x)
                     self.all_sprites_list.remove(x)
+
         elif self.game_state == "playing":
+            #spawn obstacles
+            while not self.obstacles_spawned:
+                spawn_all_obstacles()
+                self.obstacles_spawned = True
             #handle spawning
             self.spawn_ticker += 1
             if self.spawn_ticker == 20 or self.spawn_ticker == 270:
@@ -116,6 +127,8 @@ class Game(object):
                 self.spawn_ticker = 0
             if self.player.beam == True:
                 create_plasma()
+            #update mouse_pos
+            self.mouse_pos = pygame.mouse.get_pos()
             #update sprites + check collides
             self.all_sprites_list.update()
             self.snowballs_melted_list = pygame.sprite.groupcollide(self.obstacle_list, self.snowball_list, False, True)
@@ -139,10 +152,11 @@ class Game(object):
             #countdown stuff
             self.seconds = (pygame.time.get_ticks() - self.countdown_ticks) / 1000
             self.minus = 0 - self.seconds
-            self.countdown_from_120 = 60 + self.minus #tweak this one for game length
+            self.countdown_from_this = 5 + self.minus #tweak this one for game length
             #game over if countdown over
-            if self.countdown_from_120 < 0:
+            if self.countdown_from_this < 0:
                 self.game_state = "over"
+
         elif self.game_state == "over":
             #decballs
             self.dec_ticker += 1
@@ -184,6 +198,7 @@ class Game(object):
             title_sub_text = "Press return to play"
             title_sub_display = font.render(title_sub_text, False, WHITE)
             screen.blit(title_sub_display, [263, 200])
+
         elif self.game_state == "playing":
             #screen clearing/flashing code
             if self.snowballs_melted_list:
@@ -192,6 +207,7 @@ class Game(object):
                 screen.fill(WHITE)
             else:
                 screen.fill(BLACK)
+
             #draw all sprites
             self.all_sprites_list.draw(screen)
 
@@ -205,9 +221,10 @@ class Game(object):
             antiscore_display = font.render(antiscore_text, True, RED)
             screen.blit(antiscore_display, [650, 0])
 
-            timer_text = (str(math.ceil(self.countdown_from_120)))
+            timer_text = (str(math.ceil(self.countdown_from_this)))
             timer_display = font.render(timer_text, True, WHITE)
             screen.blit(timer_display, [300, 0])
+
         elif self.game_state == "over":
             screen.fill(BLACK)
 
@@ -215,7 +232,7 @@ class Game(object):
             self.decball_list.draw(screen)
             #text stuff
             game_over_header_x = 175
-            game_over_header_y = 100
+            game_over_header_y = 50
 
             game_over_text_x = 200
 
@@ -228,17 +245,14 @@ class Game(object):
             title_headline_display2 = font.render(title_headline_text2, False, RED)
             screen.blit(title_headline_display2, [game_over_header_x + 175, game_over_header_y])
 
+
             font = pygame.font.SysFont("Arial", 20, False, False)
-
-
-
             if self.score > 1:
-                title_sub_text1 = "You saved " + str(self.score) + " snowballs"
+                title_sub_text1 = "You saved " + str(self.score) + " snowballs."
             else:
                 title_sub_text1 = "You saved no snowballs... you monster."
             title_sub_display1 = font.render(title_sub_text1, False, WHITE)
             screen.blit(title_sub_display1, [game_over_text_x, 200])
-
 
             title_sub_text2 = "Meanwhile, you lost " + str(self.antiscore) + "..."
             title_sub_display2 = font.render(title_sub_text2, False, WHITE)
@@ -254,6 +268,10 @@ class Game(object):
                 title_sub_text4 = "High score: " + str(self.old_high_score)
             title_sub_display4 = font.render(title_sub_text4, False, RED)
             screen.blit(title_sub_display4, [game_over_text_x + 50, 350])
+
+            title_sub_text5 = "Press return to play again or escape to quit."
+            title_sub_display5 = font.render(title_sub_text5, False, WHITE)
+            screen.blit(title_sub_display5, [game_over_text_x - 50, 450])
 
         #Update display
         pygame.display.flip()
@@ -383,15 +401,21 @@ class Player(pygame.sprite.Sprite):
 
     def update(self):
         """called per frame"""
-        self.rect.centerx = mouse_pos[0]
+        self.rect.centerx = game.mouse_pos[0]
 
 #define functions
 def high_scores():
     global game
     if not game.scored:
-        game.hi_scores = open("high_scores.txt", "r")
-        game.old_high_score = game.hi_scores.read()
-        game.hi_scores.close()
+        try:
+            game.hi_scores = open("high_scores.txt", "r")
+            game.old_high_score = int(game.hi_scores.read())
+            game.hi_scores.close()
+        except IOError:
+            print("No HS file! Will create one on write.")
+        except ValueError:
+            print("Can't read HS value! Resorting to default -999")
+
         if int(game.old_high_score) < game.your_final_score:
             game.hi_scores = open("high_scores.txt", "w")
             game.hi_scores.write(str(game.score - game.antiscore))
@@ -446,42 +470,43 @@ def create_obstacle(x, y, right):
     game.obstacle_list.add(obstacle)
     game.all_sprites_list.add(obstacle)
 
+
+def spawn_all_obstacles():
+    create_obstacle(100, 100, False)
+    create_obstacle(200, 175, True)
+    create_obstacle(300, 250, False)
+    create_obstacle(400, 325, True)
+
 #main loop----------------------------------------------------------------------
 def main():
     #make game global cause we are going to be referring to it from inside
     #other functions... a lot
-    global game, mouse_pos
+    global game, screen_rect
+
     #Init stuff not handled by game class
     pygame.init()
-    #screen init
+
     size = (700, 500)
     screen = pygame.display.set_mode(size)
     screen_rect = screen.get_rect()
     pygame.display.set_caption("Snowball's Chance")
-    #create important objects and set data
+
     done = False
+
     clock = pygame.time.Clock()
+
     #create an instance of the Game class (remember, it's global)
     game = Game()
-    #stuff we couldnt easily do in game.__init__()
-    #create_obstacle(500, 100, True)
-    create_obstacle(100, 150, False)
-    create_obstacle(200, 200, True)
-    create_obstacle(300, 250, False)
-    create_obstacle(400, 300, True)
-    mouse_pos = pygame.mouse.get_pos()
-
 
     #Main game loop
     while not done:
         #Process events (remember - the funtion returns True at quit time)
         done = game.process_events()
         #Run game logic
-        mouse_pos = pygame.mouse.get_pos()
         game.game_logic()
         #Update display
         game.display_frame(screen)
-        #Debug console shit can go below
+        #Debug console shit can go below if required
 
         #pause for next frame
         clock.tick(60)
