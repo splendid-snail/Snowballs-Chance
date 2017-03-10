@@ -152,7 +152,7 @@ class Game(object):
             #countdown stuff
             self.seconds = (pygame.time.get_ticks() - self.countdown_ticks) / 1000
             self.minus = 0 - self.seconds
-            self.countdown_from_this = 5 + self.minus #tweak this one for game length
+            self.countdown_from_this = 60 + self.minus #tweak this one for game length
             #game over if countdown over
             if self.countdown_from_this < 0:
                 self.game_state = "over"
